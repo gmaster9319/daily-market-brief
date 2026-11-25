@@ -14,6 +14,9 @@ today_str = now_tw.strftime("%Y/%m/%d")
 weekday_map = ["一", "二", "三", "四", "五", "六", "日"]
 weekday_str = weekday_map[now_tw.weekday()]
 
+# 僅使用官方確認支援免費額度與 Google 搜尋的模型
+MODELS = ["gemini-4-hydrogen", "gemini-3.8-flash"]
+
 PROMPT = f"""
 你是一位客觀中立的財經主編。今天是台灣時間 {today_str}（週{weekday_str}）盤前。
 請務必使用 Google 搜尋查證「最新一個交易日」的美股、台股與全球總經數據，並嚴格遵守以下零幻覺鐵律：
@@ -60,39 +63,32 @@ PROMPT = f"""
 注意：top_news 最多 3 則，所有文字保持精煉好讀，適合在手機圖卡上閱讀。
 """
 
-def pick_available_model(client):
-    candidates = []
-    for m in client.models.list():
-        name = getattr(m, "name", "")
-        actions = getattr(m, "supported_actions", None) or getattr(m, "supported_generation_methods", None) or []
-        if "generateContent" in actions and "gemini" in name.lower():
-            short_name = name.replace("models/", "")
-            if not any(bad in short_name.lower() for bad in ["tts", "image", "audio", "embedding", "vision", "veo", "robotics", "computer-use"]):
-                candidates.append(short_name)
-    print("Available Gemini models:", candidates)
-    flash_models = sorted([c for c in candidates if "flash" in c.lower() and "lite" not in c.lower()], reverse=True)
-    if flash_models:
-        return flash_models[0]
-    if candidates:
-        return sorted(candidates, reverse=True)[0]
-    raise RuntimeError("No available Gemini models found for this API key.")
-
 def fetch_brief_data():
     client = genai.Client()
-    model_name = pick_available_model(client)
-    print("Selected model:", model_name)
-    response = client.models.generate_content(
-        model=model_name,
-        contents=PROMPT,
-        config=types.GenerateContentConfig(
-            tools=[{"google_search": {}}],
-            temperature=0.2,
-        ),
-    )
-    text = response.text
-    match = re.search(r"```json\s*(\{.*?\})\s*```", text, re.DOTALL)
-    json_str = match.group(1) if match else text[text.find("{"):text.rfind("}") + 1]
-    return json.loads(json_str)
+    last_error = None
+    for model_name in MODELS:
+        print(f"Trying model: {model_name}")
+        try:
+            response = client.models.generate_content(
+                model=model_name,
+                contents=PROMPT,
+                config=types.GenerateContentConfig(
+                    tools=[{"google_search": {}}],
+                    temperature=0.2,
+                ),
+            )
+            text = response.text
+            if not text:
+                raise ValueError("Empty response text")
+            match = re.search(r"```json\s*(\{.*?\})\s*```", text, re.DOTALL)
+            json_str = match.group(1) if match else text[text.find("{"):text.rfind("}") + 1]
+            data = json.loads(json_str)
+            print(f"Success with model: {model_name}")
+            return data
+        except Exception as e:
+            print(f"Model {model_name} failed: {e}")
+            last_error = e
+    raise RuntimeError(f"All models failed. Last error: {last_error}")
 
 def render_and_screenshot(data):
     docs_dir = Path("docs")
@@ -103,7 +99,6 @@ def render_and_screenshot(data):
     rendered_html = docs_dir / "index.html"
     rendered_html.write_text(html_content, encoding="utf-8")
 
-    # 透過 Playwright 渲染並輸出 2x 高清 PNG
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page(viewport={"width": 680, "height": 100}, device_scale_factor=2)
@@ -114,7 +109,6 @@ def render_and_screenshot(data):
         card.screenshot(path=str(docs_dir / "latest.png"))
         browser.close()
 
-    # 寫入 meta.json 供 LINE 機器人避開圖片快取
     meta = {
         "date": now_tw.strftime("%Y-%m-%d"),
         "timestamp": int(now_tw.timestamp()),
