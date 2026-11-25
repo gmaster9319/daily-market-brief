@@ -19,10 +19,12 @@ tz_tw = datetime.timezone(datetime.timedelta(hours=8))
 now_tw = datetime.datetime.now(tz_tw)
 now_utc = datetime.datetime.now(datetime.timezone.utc)
 today_str = now_tw.strftime("%Y/%m/%d")
+today_md = now_tw.strftime("%m/%d")
 weekday_map = ["一", "二", "三", "四", "五", "六", "日"]
 weekday_str = weekday_map[now_tw.weekday()]
 
-MODELS = ["gemini-4-hydrogen", "gemini-3.8-flash"]
+# 加入第 3 順位備援，降低尖峰時段 503 機率
+MODELS = ["gemini-4-hydrogen", "gemini-3.8-flash", "gemini-3.5-flash-lite"]
 HTTP_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
 }
@@ -35,7 +37,6 @@ RSS_FEEDS = [
     ("CNBC", "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=10000664"),
 ]
 
-# 專抓台灣政經大事、選舉、法說會、央行會議等「本週／下週預告」
 TW_EVENT_PREVIEW_RSS = (
     "https://news.google.com/rss/search?"
     "q=(%E5%8F%B0%E8%82%A1+OR+%E5%8F%B0%E7%81%A3)+AND+(%E6%9C%AC%E9%80%B1%E5%A4%A7%E4%BA%8B+OR+%E4%B8%8B%E9%80%B1%E7%84%A6%E9%BB%9E+OR+%E6%B3%95%E8%AA%AA%E6%9C%83+OR+%E9%81%B8%E8%88%89+OR+%E5%A4%AE%E8%A1%8C+OR+%E8%B2%A1%E7%B6%93%E8%A1%8C%E4%BA%8B%E6%9B%86)"
@@ -43,7 +44,23 @@ TW_EVENT_PREVIEW_RSS = (
 )
 
 
-def fetch_quote(symbol, name, is_us=True, is_yield=False):
+def classify_move(pct):
+    if pct >= 2.0:
+        return "大漲"
+    if pct >= 0.5:
+        return "收漲"
+    if pct > 0.05:
+        return "小漲"
+    if pct <= -2.5:
+        return "重挫"
+    if pct <= -1.0:
+        return "走弱"
+    if pct < -0.05:
+        return "小跌"
+    return "平盤"
+
+
+def fetch_quote(symbol, name, is_us=True, is_yield=False, show_pts=False):
     expected_us_date = (now_tw - datetime.timedelta(days=1)).date()
     try:
         hist = yf.Ticker(symbol).history(period="7d")
@@ -61,31 +78,36 @@ def fetch_quote(symbol, name, is_us=True, is_yield=False):
                 "name": name,
                 "value": "休市",
                 "change": f"前收 {last_date.strftime('%m/%d')}",
+                "pts": "",
+                "status": "休市",
                 "trend": "flat",
+                "is_extreme": False,
                 "pct_num": 0.0,
                 "date": last_date.strftime("%m/%d"),
             }
 
         prev_val = float(hist["Close"].iloc[-2]) if len(hist) >= 2 else last_val
-        pct = ((last_val - prev_val) / prev_val * 100.0) if prev_val else 0.0
+        diff = last_val - prev_val
+        pct = (diff / prev_val * 100.0) if prev_val else 0.0
 
         if is_yield:
             val_str = f"{last_val:.2f}%"
-            diff_bp = (last_val - prev_val) * 100.0
-            chg_str = f"{diff_bp:+.1f} bps"
-        elif last_val >= 1000:
-            val_str = f"{last_val:,.0f}"
-            chg_str = f"{pct:+.2f}%"
+            chg_str = f"{diff * 100.0:+.1f} bps"
+            pts_str = ""
         else:
             val_str = f"{last_val:,.2f}"
             chg_str = f"{pct:+.2f}%"
+            pts_str = f"({diff:+,.0f}點)" if (show_pts and abs(diff) >= 1) else ""
 
         trend = "up" if pct > 0.01 else ("down" if pct < -0.01 else "flat")
         return {
             "name": name,
             "value": val_str,
             "change": chg_str,
+            "pts": pts_str,
+            "status": classify_move(pct),
             "trend": trend,
+            "is_extreme": abs(pct) >= 2.5,
             "pct_num": abs(pct),
             "date": last_date.strftime("%m/%d"),
         }
@@ -95,14 +117,17 @@ def fetch_quote(symbol, name, is_us=True, is_yield=False):
             "name": name,
             "value": "暫無報價",
             "change": "--",
+            "pts": "",
+            "status": "待更新",
             "trend": "flat",
+            "is_extreme": False,
             "pct_num": 0.0,
             "date": "--",
         }
 
 
 def fetch_twse_spot():
-    """證交所三大法人現貨買賣超（單位：億元）"""
+    """證交所三大法人現貨買賣超，拆出外資、投信、自營商（單位：億元）"""
     try:
         r = requests.get(
             "https://www.twse.com.tw/rwd/zh/fund/BFI82U?response=json",
@@ -116,7 +141,10 @@ def fetch_twse_spot():
 
         d_raw = str(j.get("date", ""))
         d_fmt = f"{d_raw[4:6]}/{d_raw[6:8]}" if len(d_raw) == 8 else ""
-        foreign_net = None
+
+        foreign_net = 0.0
+        trust_net = 0.0
+        dealer_net = 0.0
         total_net = None
 
         for row in j["data"]:
@@ -124,23 +152,40 @@ def fetch_twse_spot():
             diff = float(str(row[3]).replace(",", "")) / 1e8
             if "外資及陸資" in name and "不含" in name:
                 foreign_net = diff
+            elif "投信" in name:
+                trust_net = diff
+            elif "自營商" in name and "外資" not in name:
+                dealer_net += diff
             elif "合計" in name:
                 total_net = diff
 
-        if foreign_net is None:
-            raise ValueError("Foreign spot row not found")
+        if total_net is None:
+            total_net = foreign_net + trust_net + dealer_net
 
-        trend = "up" if foreign_net > 0 else ("down" if foreign_net < 0 else "flat")
-        sub = f"三大法人 {total_net:+.1f} 億 ({d_fmt})" if total_net is not None else f"資料日 {d_fmt}"
+        def make_pill(label, val):
+            t = "up" if val > 0.01 else ("down" if val < -0.01 else "flat")
+            return {"label": label, "value": f"{val:+.1f}億", "trend": t}
+
+        total_trend = "up" if total_net > 0 else ("down" if total_net < 0 else "flat")
+        action = "買超" if total_net >= 0 else "賣超"
         return {
-            "label": "外資現貨買賣超",
-            "value": f"{foreign_net:+.1f} 億",
-            "sub": sub,
-            "trend": trend,
+            "headline": f"合計{action} {abs(total_net):,.1f} 億",
+            "trend": total_trend,
+            "date": d_fmt,
+            "breakdown": [
+                make_pill("外資", foreign_net),
+                make_pill("投信", trust_net),
+                make_pill("自營商", dealer_net),
+            ],
         }
     except Exception as e:
         print(f"[WARN] TWSE spot failed: {e}")
-        return {"label": "外資現貨買賣超", "value": "暫無資料", "sub": "證交所連線逾時", "trend": "flat"}
+        return {
+            "headline": "暫無資料",
+            "trend": "flat",
+            "date": "--",
+            "breakdown": [],
+        }
 
 
 def fetch_taifex_foreign_oi():
@@ -178,17 +223,36 @@ def fetch_taifex_foreign_oi():
         net_oi = int(float(latest_row[net_idx].replace(",", "").strip()))
         date_parts = latest_row[0].split("/")
         d_fmt = f"{int(date_parts[1]):02d}/{int(date_parts[2]):02d}" if len(date_parts) == 3 else latest_row[0]
-        trend = "up" if net_oi > 0 else ("down" if net_oi < 0 else "flat")
         status = "淨多單" if net_oi > 0 else ("淨空單" if net_oi < 0 else "中性")
+        is_alert = net_oi <= -40000
+
+        if net_oi <= -100000:
+            note = f"資料日 {d_fmt} ・ 突破十萬口警戒"
+        elif net_oi <= -40000:
+            note = f"資料日 {d_fmt} ・ 逾四萬口高空單警戒"
+        else:
+            note = f"資料日 {d_fmt} ・ 外資期貨{status}"
+
         return {
-            "label": "外資台指期未平倉",
-            "value": f"{net_oi:+,} 口",
-            "sub": f"{status} ({d_fmt})",
-            "trend": trend,
+            "title": f"外資台指期{status}",
+            "value": f"{abs(net_oi):,}",
+            "unit": "口",
+            "badge": "警戒" if is_alert else status,
+            "is_alert": is_alert,
+            "note": note,
+            "raw_net": net_oi,
         }
     except Exception as e:
         print(f"[WARN] TAIFEX OI failed: {e}")
-        return {"label": "外資台指期未平倉", "value": "暫無資料", "sub": "期交所連線逾時", "trend": "flat"}
+        return {
+            "title": "外資台指期未平倉",
+            "value": "暫無",
+            "unit": "",
+            "badge": "待更新",
+            "is_alert": False,
+            "note": "期交所連線逾時",
+            "raw_net": 0,
+        }
 
 
 def fetch_taifex_night():
@@ -229,46 +293,49 @@ def fetch_taifex_night():
         pct_val = float(target["CDiffRate"])
         trend = "up" if diff_val > 0 else ("down" if diff_val < 0 else "flat")
         return {
-            "label": "台指期夜盤",
-            "value": f"{diff_val:+,.0f} 點",
-            "sub": f"{last_val:,.0f} ({pct_val:+.2f}%)",
+            "value": f"{last_val:,.0f}",
+            "unit": "點",
+            "badge": f"{diff_val:+,.0f}點 ({pct_val:+.2f}%)",
             "trend": trend,
+            "is_extreme": abs(pct_val) >= 2.0,
         }
     except Exception as e:
         print(f"[WARN] TAIFEX night failed: {e}")
-        return {"label": "台指期夜盤", "value": "休市／暫無", "sub": "非盤後或連線逾時", "trend": "flat"}
+        return {
+            "value": "休市／待開盤",
+            "unit": "",
+            "badge": "暫無夜盤報價",
+            "trend": "flat",
+            "is_extreme": False,
+        }
 
 
 def fetch_all_market_data():
     return {
         "us_indices": [
-            fetch_quote("^DJI", "道瓊工業", is_us=True),
-            fetch_quote("^GSPC", "S&P 500", is_us=True),
-            fetch_quote("^IXIC", "那斯達克", is_us=True),
-            fetch_quote("^SOX", "費城半導體", is_us=True),
+            fetch_quote("^DJI", "道瓊工業", is_us=True, show_pts=True),
+            fetch_quote("^GSPC", "S&P 500", is_us=True, show_pts=False),
+            fetch_quote("^IXIC", "那斯達克", is_us=True, show_pts=False),
+            fetch_quote("^SOX", "費城半導體", is_us=True, show_pts=True),
         ],
         "barometer": {
-            "tsm": fetch_quote("TSM", "台積電 ADR", is_us=True),
-            "nvda": fetch_quote("NVDA", "輝達 NVDA", is_us=True),
+            "tsm": fetch_quote("TSM", "台積電 ADR (TSM)", is_us=True),
+            "nvda": fetch_quote("NVDA", "輝達 (NVDA)", is_us=True),
         },
-        "asia": [
-            fetch_quote("^TWII", "台灣加權", is_us=False),
-            fetch_quote("^N225", "日經 225", is_us=False),
-        ],
         "macro": [
             fetch_quote("^TNX", "10Y 美債殖利率", is_us=False, is_yield=True),
-            fetch_quote("DX-Y.NYB", "美元指數 DXY", is_us=False),
+            fetch_quote("DX-Y.NYB", "美元指數 (DXY)", is_us=False),
             fetch_quote("^VIX", "VIX 恐慌指數", is_us=False),
         ],
-        "tw_chips": [
-            fetch_taifex_night(),
-            fetch_twse_spot(),
-            fetch_taifex_foreign_oi(),
-        ],
+        "tw_night": fetch_taifex_night(),
+        "tw_index": fetch_quote("^TWII", "台灣加權指數", is_us=False, show_pts=True),
+        "nikkei": fetch_quote("^N225", "日經 225", is_us=False, show_pts=False),
+        "tw_spot": fetch_twse_spot(),
+        "tw_oi": fetch_taifex_foreign_oi(),
     }
 
 
-def fetch_rss_news(max_items=28):
+def fetch_rss_news(max_items=24):
     cutoff = now_utc - datetime.timedelta(hours=24)
     items = []
     seen_titles = set()
@@ -276,7 +343,7 @@ def fetch_rss_news(max_items=28):
     for default_source, url in RSS_FEEDS:
         try:
             feed = feedparser.parse(url)
-            for entry in feed.entries[:20]:
+            for entry in feed.entries[:18]:
                 raw_title = html.unescape(entry.get("title", "")).strip()
                 if not raw_title or raw_title in seen_titles:
                     continue
@@ -297,7 +364,7 @@ def fetch_rss_news(max_items=28):
 
                 raw_summary = html.unescape(entry.get("summary", ""))
                 clean_summary = re.sub(r"<[^>]+>", " ", raw_summary)
-                clean_summary = re.sub(r"\s+", " ", clean_summary).strip()[:400]
+                clean_summary = re.sub(r"\s+", " ", clean_summary).strip()[:360]
 
                 seen_titles.add(raw_title)
                 items.append({
@@ -312,60 +379,68 @@ def fetch_rss_news(max_items=28):
 
 
 def fetch_auto_calendar():
-    """三層全自動行事曆：ForexFactory(美國總經) + 台灣國定假日API + calendar.json備援"""
     today_d = now_tw.date()
     end_d = today_d + datetime.timedelta(days=7)
     events = []
     seen = set()
 
-    # 1. ForexFactory 美國高影響力事件 & 休市
     for url in [
         "https://nfs.faireconomy.media/ff_calendar_thisweek.json",
         "https://nfs.faireconomy.media/ff_calendar_nextweek.json",
     ]:
         try:
             r = requests.get(url, headers=HTTP_HEADERS, timeout=12)
+            if r.status_code == 404:
+                continue
             r.raise_for_status()
             for ev in r.json():
-                if ev.get("country") != "USD":
-                    continue
-                if ev.get("impact") not in ("High", "Holiday"):
+                if ev.get("country") != "USD" or ev.get("impact") not in ("High", "Holiday"):
                     continue
                 d_raw = ev.get("date", "")
                 if not d_raw:
                     continue
                 dt_tw = datetime.datetime.fromisoformat(d_raw).astimezone(tz_tw)
                 if today_d <= dt_tw.date() <= end_d:
+                    is_today = (dt_tw.date() == today_d)
                     t_label = "全日" if ev.get("impact") == "Holiday" else dt_tw.strftime("%H:%M")
-                    entry_str = f"{dt_tw.strftime('%m/%d')} ({t_label}) [US] {ev.get('title', '').strip()}"
-                    if entry_str not in seen:
-                        seen.add(entry_str)
-                        events.append(entry_str)
+                    d_label = f"今日 {t_label}" if is_today else f"{dt_tw.strftime('%m/%d')} ({t_label})"
+                    key = f"{dt_tw.strftime('%Y-%m-%d')}-{ev.get('title', '').strip()}"
+                    if key not in seen:
+                        seen.add(key)
+                        events.append({
+                            "sort_key": dt_tw.strftime("%Y-%m-%d %H:%M"),
+                            "time_label": d_label,
+                            "title": f"[US] {ev.get('title', '').strip()}",
+                            "is_today": is_today,
+                        })
         except Exception as e:
             print(f"[WARN] ForexFactory calendar failed ({url}): {e}")
 
-    # 2. 台灣政府開放資料國定假日 API
-    years = {today_d.year, end_d.year}
-    for y in years:
+    for y in {today_d.year, end_d.year}:
         try:
             r = requests.get(f"https://api.pin-yi.me/taiwan-calendar/{y}?isHoliday=true", headers=HTTP_HEADERS, timeout=10)
             r.raise_for_status()
             for item in r.json():
                 desc = str(item.get("description") or "").strip()
                 if not desc:
-                    continue  # 略過一般週六日
+                    continue
                 d_str = str(item.get("date", ""))
                 if len(d_str) == 8:
                     ev_d = datetime.date(int(d_str[:4]), int(d_str[4:6]), int(d_str[6:8]))
                     if today_d <= ev_d <= end_d:
-                        entry_str = f"{ev_d.strftime('%m/%d')} (全日) [TW] {desc}"
-                        if entry_str not in seen:
-                            seen.add(entry_str)
-                            events.append(entry_str)
+                        is_today = (ev_d == today_d)
+                        key = f"{ev_d.isoformat()}-{desc}"
+                        if key not in seen:
+                            seen.add(key)
+                            events.append({
+                                "sort_key": f"{ev_d.isoformat()} 00:00",
+                                "time_label": "今日 (全日)" if is_today else f"{ev_d.strftime('%m/%d')} (全日)",
+                                "title": f"[TW] {desc}",
+                                "is_today": is_today,
+                            })
         except Exception as e:
             print(f"[WARN] Taiwan holiday API failed ({y}): {e}")
 
-    # 3. 本地 calendar.json 選配備援
     cal_path = Path("calendar.json")
     if cal_path.exists():
         try:
@@ -374,25 +449,31 @@ def fetch_auto_calendar():
                     continue
                 ev_d = datetime.date.fromisoformat(ev.get("date", ""))
                 if today_d <= ev_d <= end_d:
-                    t_str = f" ({ev.get('time_tw')})" if ev.get("time_tw") else ""
-                    entry_str = f"{ev_d.strftime('%m/%d')}{t_str} {ev.get('event', '')}".strip()
-                    if entry_str not in seen:
-                        seen.add(entry_str)
-                        events.append(entry_str)
+                    is_today = (ev_d == today_d)
+                    t_str = ev.get("time_tw") or "全日"
+                    key = f"{ev_d.isoformat()}-{ev.get('event', '')}"
+                    if key not in seen:
+                        seen.add(key)
+                        events.append({
+                            "sort_key": f"{ev_d.isoformat()} 00:00",
+                            "time_label": f"今日 ({t_str})" if is_today else f"{ev_d.strftime('%m/%d')} ({t_str})",
+                            "title": ev.get("event", "").strip(),
+                            "is_today": is_today,
+                        })
         except Exception as e:
             print(f"[WARN] calendar.json load failed: {e}")
 
-    return sorted(events)
+    events.sort(key=lambda x: x["sort_key"])
+    return events
 
 
-def fetch_tw_event_previews(max_items=12):
-    """抓過去 5 天台灣本週大事／選舉／法說會／央行預告新聞，供 AI 擷取明確日期事件"""
+def fetch_tw_event_previews(max_items=10):
     cutoff = now_utc - datetime.timedelta(days=5)
     previews = []
     seen = set()
     try:
         feed = feedparser.parse(TW_EVENT_PREVIEW_RSS)
-        for entry in feed.entries[:20]:
+        for entry in feed.entries[:18]:
             raw_title = html.unescape(entry.get("title", "")).strip()
             if not raw_title or raw_title in seen:
                 continue
@@ -403,7 +484,7 @@ def fetch_tw_event_previews(max_items=12):
                     continue
             raw_summary = html.unescape(entry.get("summary", ""))
             clean_summary = re.sub(r"<[^>]+>", " ", raw_summary)
-            clean_summary = re.sub(r"\s+", " ", clean_summary).strip()[:240]
+            clean_summary = re.sub(r"\s+", " ", clean_summary).strip()[:220]
             seen.add(raw_title)
             previews.append(f"{raw_title}｜{clean_summary}")
     except Exception as e:
@@ -425,39 +506,50 @@ def build_prompt(market, news, structured_cal, tw_previews):
 
 【核心規範】
 1. 嚴禁自行編造或補充任何未出現在資料中的數字、點位、稅率、日期或事件。
-2. 語氣純陳述事實，不做買賣建議、不做多空預測，禁用「史詩級」「崩盤」「暴漲暴跌」等煽動字眼。
-3. 請將相關的多則新聞「整合成最多 3 個完整主題」，清楚交代「具體發生什麼事（事實）」與「對台美股供應鏈或板塊的傳導路徑（影響）」。
-4. 未來 7 天行事曆（calendar_events）：請整合下方【自動抓取總經與休市行事曆】，並從【台灣焦點預告新聞】中擷取「未來 7 天內且有明確日期」的台灣重大事件（例如選舉、央行會議、重量級法說會、除息等），統一翻成精簡繁體中文，按日期排序，最多列 4 項（格式：`MM/DD (時間或全日) 事件簡稱`）；若新聞未寫明確日期切勿猜測。
-5. 盲點觀察（blindspot）請結合「美股／殖利率／VIX／台股外資籌碼」之間的背離或結構性風險撰寫。
+2. 嚴禁使用任何 Emoji 或表情符號。
+3. 語氣純陳述事實，不做買賣建議、不做多空預測，禁用「史詩級」「崩盤」「暴漲暴跌」等煽動字眼。
+4. 全球關鍵 3 大事（top_news）：請將相關多則新聞「整合成 3 個完整主題」，每則配一個 2-5 字英文大寫分類碼（如 US / TW / AI / SEMI / MACRO），清楚交代具體事實與對台美股板塊的傳導影響。
+5. 未來 7 天行事曆（calendar_events）：整合下方自動抓取的總經行事曆，並從【台灣焦點預告新聞】中擷取「未來 7 天內且有明確日期」的台灣重大事件（選舉、央行、重要法說會等），統一翻成繁體中文，按時間順序最多列 4 項；若事件在今天（{today_md}），is_today 設為 true。
+6. 盲點與反面視角（blindspots）：固定產出「2 則」結構化深度觀察（每則含短標題與 1-2 句說明），結合美股分化、殖利率、VIX 與台股法人／期貨籌碼的背離訊號。
 
 【行情與籌碼數據】
 {json.dumps(market, ensure_ascii=False)}
 
-【過去 24 小時財經新聞（多源彙整）】
+【過去 24 小時財經新聞】
 {news_lines}
 
 【自動抓取總經與休市行事曆（未來 7 天）】
 {json.dumps(structured_cal, ensure_ascii=False)}
 
-【台灣焦點預告新聞（供擷取未來 7 天明確日期事件）】
+【台灣焦點預告新聞】
 {preview_lines}
 
-請只輸出一段合法 JSON（用 ```json 與 ``` 包覆）：
+請只輸出一段合法 JSON（不要加 markdown 標記以外的多餘說明）：
 {{
   "regime_tag": "4-6字客觀現象標籤",
-  "one_line_summary": "一句話客觀總結昨夜市場主軸與籌碼氛圍（40字內）",
+  "premarket_focus": "盤前焦點一句話總結昨夜盤勢主軸與台股觀察重點（50字內）",
   "top_news": [
     {{
-      "source": "主要媒體名稱（如 經濟日報 / CNBC）",
-      "title": "整合後精簡主題標題（20字內）",
-      "fact": "整合多篇報導的具體客觀事實（65字內）",
-      "impact": "對台美股板塊與供應鏈的傳導邏輯（55字內）"
+      "tag": "US 或 TW 或 AI 或 SEMI 或 MACRO",
+      "source": "媒體名稱",
+      "title": "整合後精簡主題標題（22字內）",
+      "fact": "整合多篇報導的具體客觀事實（60字內）",
+      "impact": "受影響板塊與供應鏈傳導邏輯（55字內）"
     }}
   ],
   "calendar_events": [
-    "MM/DD (時間或全日) 繁中精簡事件"
+    {{
+      "time_label": "今日 21:30 或 11/27 (五) 等簡潔時間標註",
+      "title": "繁體中文事件名稱（勿加 [US]/[TW] 前綴）",
+      "is_today": false
+    }}
   ],
-  "blindspot": "1句結合行情與外資籌碼的結構性風險／容易忽略的訊號（65字內）"
+  "blindspots": [
+    {{
+      "title": "盲點短標題（14字內）",
+      "detail": "具體數據佐證與反面結構視角（65字內）"
+    }}
+  ]
 }}
 """
 
@@ -473,7 +565,10 @@ def generate_ai_summary(market, news, structured_cal, tw_previews):
                 resp = client.models.generate_content(
                     model=model_name,
                     contents=prompt,
-                    config=types.GenerateContentConfig(temperature=0.2),
+                    config=types.GenerateContentConfig(
+                        temperature=0.2,
+                        response_mime_type="application/json",
+                    ),
                 )
                 text = (resp.text or "").strip()
                 if not text:
@@ -485,24 +580,38 @@ def generate_ai_summary(market, news, structured_cal, tw_previews):
                 return parsed, False
             except Exception as e:
                 print(f"[WARN] {model_name} attempt {attempt + 1} failed: {e}")
-                time.sleep(5 * (attempt + 1))
+                time.sleep(4 * (attempt + 1))
 
     print("[FALLBACK] AI unavailable, generating pure-data card.")
     fallback_news = [
         {
+            "tag": f"0{idx+1}",
             "source": n["source"],
-            "title": n["title"][:24],
-            "fact": n["summary"][:60] or "請參閱各媒體原始報導。",
-            "impact": "（AI 摘要暫時忙碌，此為原始快訊直出）",
+            "title": n["title"][:26],
+            "fact": n["summary"][:65] or "請參閱各媒體原始報導。",
+            "impact": "AI 摘要服務暫時忙碌，目前以原始財經快訊直出。",
         }
-        for n in news[:3]
+        for idx, n in enumerate(news[:3])
+    ]
+    fallback_cal = [
+        {
+            "time_label": c["time_label"],
+            "title": c["title"],
+            "is_today": c["is_today"],
+        }
+        for c in structured_cal[:4]
     ]
     return {
         "regime_tag": "純數據速報",
-        "one_line_summary": "AI 摘要暫時離線，已自動切換為即時數據與新聞標題直出模式。",
+        "premarket_focus": "AI 摘要服務暫時忙碌，已自動切換為即時市場數據、法人籌碼與原始快訊直出模式。",
         "top_news": fallback_news,
-        "calendar_events": structured_cal[:4],
-        "blindspot": "今日為系統自動容錯模式，請直接參考上方最新收盤數據、外資籌碼與快訊。",
+        "calendar_events": fallback_cal,
+        "blindspots": [
+            {
+                "title": "系統容錯模式啟動",
+                "detail": "因模型端高流量暫時無法回應，今日由程式直接輸出最新行情、三大法人與期貨未平倉數據。",
+            }
+        ],
     }, True
 
 
@@ -517,7 +626,7 @@ def render_and_screenshot(payload):
 
     with sync_playwright() as p:
         browser = p.chromium.launch()
-        page = browser.new_page(viewport={"width": 680, "height": 100}, device_scale_factor=2)
+        page = browser.new_page(viewport={"width": 760, "height": 100}, device_scale_factor=2)
         page.goto(f"file://{rendered_html.resolve()}")
         page.evaluate("document.fonts.ready")
         page.wait_for_timeout(500)
@@ -542,28 +651,37 @@ if __name__ == "__main__":
     ai_data, is_fallback = generate_ai_summary(market_data, rss_news, structured_cal, tw_previews)
 
     big_move = any(i.get("pct_num", 0) >= 2.0 for i in market_data["us_indices"])
-    mode = "深度版" if (now_tw.weekday() == 5 or big_move) else "精簡版"
+    mode_label = "重大事件日・深度版" if (now_tw.weekday() == 5 or big_move) else "常態盤前・精簡版"
+    is_deep = (now_tw.weekday() == 5 or big_move)
 
     us_dates = sorted({i["date"] for i in market_data["us_indices"] if i["date"] != "--"})
-    tw_date = market_data["asia"][0]["date"]
-    data_basis = f"美股 {us_dates[-1] if us_dates else '--'} ｜ 台股 {tw_date}"
+    tw_date = market_data["tw_index"]["date"]
+    data_basis = f"美股 {us_dates[-1] if us_dates else '--'} 收盤 ＆ 台股 {tw_date} 盤後／夜盤"
 
-    cal_list = ai_data.get("calendar_events") or structured_cal[:4]
+    cal_events = ai_data.get("calendar_events") or [
+        {"time_label": c["time_label"], "title": c["title"], "is_today": c["is_today"]}
+        for c in structured_cal[:4]
+    ]
 
     payload = {
-        "date_label": f"{today_str}（週{weekday_str}）",
-        "mode": mode,
+        "title_date": f"{today_str} ({weekday_str})",
+        "mode_label": mode_label,
+        "is_deep": is_deep,
         "data_basis": data_basis,
+        "tw_date": tw_date,
         "regime_tag": ai_data.get("regime_tag", "盤前總覽"),
-        "one_line_summary": ai_data.get("one_line_summary", ""),
+        "premarket_focus": ai_data.get("premarket_focus", ""),
         "us_indices": market_data["us_indices"],
         "barometer": market_data["barometer"],
-        "asia": market_data["asia"],
         "macro": market_data["macro"],
-        "tw_chips": market_data["tw_chips"],
+        "tw_night": market_data["tw_night"],
+        "tw_index": market_data["tw_index"],
+        "nikkei": market_data["nikkei"],
+        "tw_spot": market_data["tw_spot"],
+        "tw_oi": market_data["tw_oi"],
         "top_news": ai_data.get("top_news", [])[:3],
-        "calendar_list": cal_list[:4],
-        "blindspot": ai_data.get("blindspot", ""),
+        "calendar_events": cal_events[:4],
+        "blindspots": ai_data.get("blindspots", [])[:2],
         "ai_fallback": is_fallback,
     }
 
