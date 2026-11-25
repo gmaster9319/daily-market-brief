@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0b0f19;
+    font-family: "Noto Sans CJK TC", "Noto Sans TC", "PingFang TC", sans-serif;
+    color: #f1f5f9;
+    width: 680px;
+  }
+  #brief-card {
+    background: linear-gradient(180deg, #0f172a 0%, #0b0f19 100%);
+    padding: 28px;
+    width: 680px;
+  }
+  .header {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    border-bottom: 1px solid #1e293b; padding-bottom: 16px; margin-bottom: 18px;
+  }
+  .title { font-size: 26px; font-weight: 800; letter-spacing: 0.5px; color: #ffffff; }
+  .subtitle { font-size: 13px; color: #94a3b8; margin-top: 4px; }
+  .badge {
+    background: #1e293b; color: #38bdf8; border: 1px solid #38bdf855;
+    padding: 4px 12px; border-radius: 999px; font-size: 13px; font-weight: 700;
+  }
+  .badge.deep { background: #451a03; color: #fb923c; border-color: #fb923c66; }
+
+  .section-title {
+    font-size: 14px; font-weight: 700; color: #94a3b8;
+    letter-spacing: 1px; margin: 18px 0 10px; text-transform: uppercase;
+  }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
+  .box {
+    background: #151e32; border: 1px solid #1e293b;
+    border-radius: 12px; padding: 12px;
+  }
+  .box-label { font-size: 12px; color: #94a3b8; margin-bottom: 4px; }
+  .box-val { font-size: 17px; font-weight: 700; color: #f8fafc; }
+  .box-chg { font-size: 14px; font-weight: 700; margin-top: 2px; }
+
+  /* 台股習慣：紅漲綠跌 */
+  .up { color: #f87171; }
+  .down { color: #34d399; }
+  .flat { color: #94a3b8; }
+
+  .barometer {
+    display: flex; justify-content: space-between; align-items: center;
+    background: #151e32; border: 1px solid #1e293b; border-radius: 12px;
+    padding: 10px 16px; margin-top: 10px; font-size: 14px;
+  }
+  .news-item {
+    background: #151e32; border-left: 4px solid #38bdf8;
+    border-radius: 0 12px 12px 0; padding: 12px 14px; margin-bottom: 10px;
+  }
+  .news-title { font-size: 16px; font-weight: 700; color: #ffffff; margin-bottom: 6px; }
+  .news-text { font-size: 13.5px; color: #cbd5e1; line-height: 1.5; margin-bottom: 4px; }
+  .news-impact { font-size: 13px; color: #7dd3fc; line-height: 1.45; }
+
+  .tw-box {
+    background: #151e32; border: 1px solid #1e293b; border-radius: 12px;
+    padding: 14px; font-size: 14px; line-height: 1.7; color: #e2e8f0;
+  }
+  .radar-box {
+    background: #1c1917; border: 1px solid #78350f; border-radius: 12px;
+    padding: 14px; margin-top: 12px;
+  }
+  .radar-title { font-size: 14px; font-weight: 700; color: #fbbf24; margin-bottom: 6px; }
+  .radar-text { font-size: 13.5px; color: #fde68a; line-height: 1.55; }
+  .footer {
+    margin-top: 16px; text-align: right; font-size: 11px; color: #64748b;
+  }
+</style>
+</head>
+<body>
+<div id="brief-card"></div>
+
+<script>
+  const d = __BRIEF_DATA__;
+  const trendIcon = t => t === 'up' ? '▲ ' : (t === 'down' ? '▼ ' : '');
+  const isDeep = d.mode && d.mode.includes('深度');
+
+  document.getElementById('brief-card').innerHTML = `
+    <div class="header">
+      <div>
+        <div class="title">台美股盤前財經晨報</div>
+        <div class="subtitle">${d.date_label} ｜ 資料基準：${d.data_basis}</div>
+      </div>
+      <div class="badge ${isDeep ? 'deep' : ''}">${d.mode}</div>
+    </div>
+
+    <div class="section-title">01. 隔夜美股與總經溫度計</div>
+    <div class="grid-4">
+      ${d.us_indices.map(i => `
+        <div class="box">
+          <div class="box-label">${i.name}</div>
+          <div class="box-val">${i.value}</div>
+          <div class="box-chg ${i.trend}">${trendIcon(i.trend)}${i.change}</div>
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="barometer">
+      <span style="color:#94a3b8;font-weight:700;">台股開盤氣壓計</span>
+      <span>台積電 ADR <strong class="${d.barometer.tsm.trend}">${trendIcon(d.barometer.tsm.trend)}${d.barometer.tsm.change}</strong></span>
+      <span>輝達 NVDA <strong class="${d.barometer.nvda.trend}">${trendIcon(d.barometer.nvda.trend)}${d.barometer.nvda.change}</strong></span>
+    </div>
+
+    <div class="grid-3">
+      ${d.macro.map(m => `
+        <div class="box">
+          <div class="box-label">${m.name}</div>
+          <div class="box-val" style="font-size:15px;">${m.value}</div>
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="section-title">02. 全球關鍵大事</div>
+    ${d.top_news.map(n => `
+      <div class="news-item">
+        <div class="news-title">${n.title}</div>
+        <div class="news-text"><strong>事實：</strong>${n.fact}</div>
+        <div class="news-impact"><strong>傳導：</strong>${n.impact}</div>
+      </div>
+    `).join('')}
+
+    <div class="section-title">03. 台股盤前風向</div>
+    <div class="tw-box">
+      <div><strong>夜盤：</strong>${d.tw_premarket.night_futures}</div>
+      <div><strong>籌碼：</strong>${d.tw_premarket.foreign_flow}</div>
+      <div><strong>焦點：</strong>${d.tw_premarket.focus}</div>
+    </div>
+
+    <div class="radar-box">
+      <div class="radar-title">04. 今日行事曆與盲點雷達</div>
+      <div class="radar-text" style="margin-bottom:6px;"><strong>📅 重點關注：</strong>${d.calendar}</div>
+      <div class="radar-text"><strong>⚠️ 盲點提醒：</strong>${d.blindspot}</div>
+    </div>
+
+    <div class="footer">Daily Market Brief ｜ 客觀事實整理，非投資買賣建議</div>
+  `;
+</script>
+</body>
+</html>
