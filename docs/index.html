@@ -30,7 +30,7 @@
 
   .summary-bar {
     background: #132038; border: 1px solid #1e3a5f; border-radius: 12px;
-    padding: 12px 16px; margin-bottom: 16px; font-size: 14.5px; line-height: 1.5; color: #e2e8f0;
+    padding: 12px 16px; margin-bottom: 14px; font-size: 14px; line-height: 1.55; color: #e2e8f0;
   }
   .regime-pill {
     display: inline-block; background: #0284c7; color: #ffffff;
@@ -38,7 +38,7 @@
   }
 
   .section-title {
-    font-size: 13.5px; font-weight: 700; color: #94a3b8;
+    font-size: 13px; font-weight: 700; color: #94a3b8;
     letter-spacing: 1px; margin: 16px 0 9px;
   }
   .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
@@ -48,9 +48,14 @@
     background: #151e32; border: 1px solid #1e293b;
     border-radius: 12px; padding: 11px 12px;
   }
+  .chip-box {
+    background: #141c2f; border: 1px solid #26344d;
+    border-radius: 12px; padding: 12px 13px;
+  }
   .box-label { font-size: 12px; color: #94a3b8; margin-bottom: 4px; }
   .box-val { font-size: 16.5px; font-weight: 700; color: #f8fafc; }
   .box-chg { font-size: 13.5px; font-weight: 700; margin-top: 2px; }
+  .box-sub { font-size: 11.5px; color: #94a3b8; margin-top: 4px; }
 
   /* 台股習慣：紅漲綠跌 */
   .up { color: #f87171; }
@@ -67,13 +72,13 @@
     border-radius: 0 12px 12px 0; padding: 11px 14px; margin-bottom: 9px;
   }
   .news-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 5px; }
-  .news-title { font-size: 15px; font-weight: 700; color: #ffffff; }
+  .news-title { font-size: 14.5px; font-weight: 700; color: #ffffff; }
   .news-src {
     font-size: 11px; color: #94a3b8; background: #0f172a;
     border: 1px solid #334155; padding: 2px 7px; border-radius: 6px; white-space: nowrap;
   }
-  .news-text { font-size: 13px; color: #cbd5e1; line-height: 1.5; margin-bottom: 3px; }
-  .news-impact { font-size: 12.5px; color: #7dd3fc; line-height: 1.45; }
+  .news-text { font-size: 13px; color: #cbd5e1; line-height: 1.55; margin-bottom: 4px; }
+  .news-impact { font-size: 12.5px; color: #7dd3fc; line-height: 1.5; }
 
   .radar-box {
     background: #1c1917; border: 1px solid #78350f; border-radius: 12px;
@@ -90,7 +95,7 @@
 <div id="brief-card"></div>
 
 <script>
-  const d = {"date_label": "2026/11/25（週三）", "mode": "深度版", "data_basis": "美股 11/24 ｜ 台股 11/25", "regime_tag": "科技承壓分化", "one_line_summary": "道瓊收紅但費半回跌7.88%，關稅消息拖累台美半導體與科技族群。", "us_indices": [{"name": "道瓊工業", "value": "50,019", "change": "+0.85%", "trend": "up", "pct_num": 0.8536908772321978, "date": "11/24"}, {"name": "S&P 500", "value": "7,201", "change": "-0.50%", "trend": "down", "pct_num": 0.49853849660134003, "date": "11/24"}, {"name": "那斯達克", "value": "23,734", "change": "-1.48%", "trend": "down", "pct_num": 1.4779077587664196, "date": "11/24"}, {"name": "費城半導體", "value": "8,832", "change": "-7.88%", "trend": "down", "pct_num": 7.880119733192452, "date": "11/24"}], "barometer": {"tsm": {"name": "台積電 ADR", "value": "349.20", "change": "-3.96%", "trend": "down", "pct_num": 3.960394294488749, "date": "11/24"}, "nvda": {"name": "輝達 NVDA", "value": "155.38", "change": "-5.86%", "trend": "down", "pct_num": 5.858829439653455, "date": "11/24"}}, "asia": [{"name": "台灣加權", "value": "38,195", "change": "-4.80%", "trend": "down", "pct_num": 4.80261450278747, "date": "11/25"}, {"name": "日經 225", "value": "57,012", "change": "-2.78%", "trend": "down", "pct_num": 2.784582054582604, "date": "11/25"}], "macro": [{"name": "10Y 美債殖利率", "value": "4.90%", "change": "-1.4 bps", "trend": "down", "pct_num": 0.2846770063470339, "date": "11/24"}, {"name": "美元指數 DXY", "value": "104.01", "change": "+0.19%", "trend": "up", "pct_num": 0.1907385424585627, "date": "11/25"}, {"name": "VIX 恐慌指數", "value": "28.01", "change": "+6.26%", "trend": "up", "pct_num": 6.259482474679151, "date": "11/25"}], "top_news": [{"source": "經濟日報", "title": "川普新關稅引發晶片股賣壓", "fact": "費城半導體指數下跌7.88%，輝達下跌5.86%，川普新關稅消息加重晶片族群賣壓。", "impact": "半導體與AI晶片供應鏈承壓，台積電ADR下跌3.96%連動影響台股電子權值。"}, {"source": "Yahoo股市", "title": "關稅衝擊代工廠而戴爾看好伺服器", "fact": "受美國200%關稅消息影響，鴻海、廣達、仁寶一度跌停；戴爾指2027伺服器供不應求。", "impact": "台灣加權指數收跌4.80%至38,195點，AI伺服器代工族群承壓。"}, {"source": "鉅亨網", "title": "城堡證券示警升息與AI投資降溫", "fact": "城堡證券示警，聯準會升息可能性與AI投資降溫正對美股形成雙重壓力。", "impact": "高估值科技與AI資本支出相關類股面臨評價檢視，影響那斯達克走勢。"}], "calendar_list": [], "blindspot": "道瓊逆勢上漲0.85%掩蓋類股分歧，VIX升至28.01且10年美債殖利率達4.90%，並存升息討論。", "ai_fallback": false};
+  const d = {"date_label": "2026/11/25（週三）", "mode": "深度版", "data_basis": "美股 11/24 ｜ 台股 11/25", "regime_tag": "純數據速報", "one_line_summary": "AI 摘要暫時離線，已自動切換為即時數據與新聞標題直出模式。", "us_indices": [{"name": "道瓊工業", "value": "50,019", "change": "+0.85%", "trend": "up", "pct_num": 0.8536908772321978, "date": "11/24"}, {"name": "S&P 500", "value": "7,201", "change": "-0.50%", "trend": "down", "pct_num": 0.49853849660134003, "date": "11/24"}, {"name": "那斯達克", "value": "23,734", "change": "-1.48%", "trend": "down", "pct_num": 1.4779077587664196, "date": "11/24"}, {"name": "費城半導體", "value": "8,832", "change": "-7.88%", "trend": "down", "pct_num": 7.880119733192452, "date": "11/24"}], "barometer": {"tsm": {"name": "台積電 ADR", "value": "349.20", "change": "-3.96%", "trend": "down", "pct_num": 3.960394294488749, "date": "11/24"}, "nvda": {"name": "輝達 NVDA", "value": "155.38", "change": "-5.86%", "trend": "down", "pct_num": 5.858829439653455, "date": "11/24"}}, "asia": [{"name": "台灣加權", "value": "38,195", "change": "-4.80%", "trend": "down", "pct_num": 4.80261450278747, "date": "11/25"}, {"name": "日經 225", "value": "57,012", "change": "-2.78%", "trend": "down", "pct_num": 2.784582054582604, "date": "11/25"}], "macro": [{"name": "10Y 美債殖利率", "value": "4.90%", "change": "-1.4 bps", "trend": "down", "pct_num": 0.2846770063470339, "date": "11/24"}, {"name": "美元指數 DXY", "value": "104.00", "change": "+0.19%", "trend": "up", "pct_num": 0.18784288547367953, "date": "11/25"}, {"name": "VIX 恐慌指數", "value": "28.38", "change": "+7.66%", "trend": "up", "pct_num": 7.663120271787044, "date": "11/25"}], "tw_chips": [{"label": "台指期夜盤", "value": "休市／暫無", "sub": "非盤後或連線逾時", "trend": "flat"}, {"label": "外資現貨買賣超", "value": "-1236.5 億", "sub": "三大法人 -829.6 億 (11/25)", "trend": "down"}, {"label": "外資台指期未平倉", "value": "-105,709 口", "sub": "淨空單 (11/25)", "trend": "down"}], "top_news": [{"source": "Yahoo股市", "title": "台股才飆3310點又噴血！美股費半暴跌近8% 台", "fact": "台股才飆3310點又噴血！美股費半暴跌近8% 台指期夜盤重摔1842點、台積電ADR跌近4% Yahoo股市", "impact": "（AI 摘要暫時忙碌，此為原始快訊直出）"}, {"source": "鉅亨網", "title": "〈美股盤後〉川普關稅風暴恐再起！費半慘跌近8% ", "fact": "〈美股盤後〉川普關稅風暴恐再起！費半慘跌近8% 輝達摔超5% Anthropic跌破發行價 鉅亨網", "impact": "（AI 摘要暫時忙碌，此為原始快訊直出）"}, {"source": "經濟日報", "title": "美股收盤／費半又暴跌8%、輝達跌6% 晶片股慘摔", "fact": "美股收盤／費半又暴跌8%、輝達跌6% 晶片股慘摔 川普新關稅加重賣壓 經濟日報", "impact": "（AI 摘要暫時忙碌，此為原始快訊直出）"}], "calendar_list": ["11/26 (全日) 美國感恩節｜美股休市一日", "11/27 (02:00 收盤) 美國感恩節翌日｜美股提前休市（半日盤）"], "blindspot": "今日為系統自動容錯模式，請直接參考上方最新收盤數據、外資籌碼與快訊。", "ai_fallback": true};
   const trendIcon = t => t === 'up' ? '▲ ' : (t === 'down' ? '▼ ' : '');
   const isDeep = d.mode && d.mode.includes('深度');
   const calText = (d.calendar_list && d.calendar_list.length > 0)
@@ -151,7 +156,18 @@
       `).join('')}
     </div>
 
-    <div class="section-title">02. 市場主要驅動事件</div>
+    <div class="section-title">02. 台股盤前籌碼</div>
+    <div class="grid-3" style="margin-top:0;">
+      ${(d.tw_chips || []).map(c => `
+        <div class="chip-box">
+          <div class="box-label">${c.label}</div>
+          <div class="box-val ${c.trend}" style="font-size:16px;">${c.value}</div>
+          <div class="box-sub">${c.sub}</div>
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="section-title">03. 市場主要驅動事件</div>
     ${d.top_news.map(n => `
       <div class="news-item">
         <div class="news-head">
@@ -164,7 +180,7 @@
     `).join('')}
 
     <div class="radar-box">
-      <div class="radar-title">03. 未來 7 天行事曆與盲點觀察</div>
+      <div class="radar-title">04. 未來 7 天行事曆與盲點觀察</div>
       <div class="radar-text" style="margin-bottom:6px;"><strong>📅 行事曆：</strong>${calText}</div>
       <div class="radar-text"><strong>⚠️ 盲點：</strong>${d.blindspot}</div>
     </div>
