@@ -60,10 +60,29 @@ PROMPT = f"""
 注意：top_news 最多 3 則，所有文字保持精煉好讀，適合在手機圖卡上閱讀。
 """
 
+def pick_available_model(client):
+    candidates = []
+    for m in client.models.list():
+        name = getattr(m, "name", "")
+        actions = getattr(m, "supported_actions", None) or getattr(m, "supported_generation_methods", None) or []
+        if "generateContent" in actions and "gemini" in name.lower():
+            short_name = name.replace("models/", "")
+            if not any(bad in short_name.lower() for bad in ["tts", "image", "audio", "embedding", "vision", "veo", "robotics", "computer-use"]):
+                candidates.append(short_name)
+    print("Available Gemini models:", candidates)
+    flash_models = sorted([c for c in candidates if "flash" in c.lower() and "lite" not in c.lower()], reverse=True)
+    if flash_models:
+        return flash_models[0]
+    if candidates:
+        return sorted(candidates, reverse=True)[0]
+    raise RuntimeError("No available Gemini models found for this API key.")
+
 def fetch_brief_data():
     client = genai.Client()
+    model_name = pick_available_model(client)
+    print("Selected model:", model_name)
     response = client.models.generate_content(
-        model="gemini-3.0-flash",
+        model=model_name,
         contents=PROMPT,
         config=types.GenerateContentConfig(
             tools=[{"google_search": {}}],
