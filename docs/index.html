@@ -5,89 +5,266 @@
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    background: #0b0f19;
-    font-family: "Noto Sans CJK TC", "Noto Sans TC", "PingFang TC", sans-serif;
+    background: #080c16;
+    font-family: "Noto Sans CJK TC", "Noto Sans TC", "PingFang TC", -apple-system, sans-serif;
     color: #f1f5f9;
-    width: 680px;
+    width: 760px;
+  }
+  .mono {
+    font-family: "JetBrains Mono", "Fira Code", "DejaVu Sans Mono", "SFMono-Regular", Consolas, monospace;
+    font-variant-numeric: tabular-nums;
   }
   #brief-card {
-    background: linear-gradient(180deg, #0f172a 0%, #0b0f19 100%);
-    padding: 28px;
-    width: 680px;
+    background: #0a0f1d;
+    padding: 24px;
+    width: 760px;
   }
-  .header {
-    display: flex; justify-content: space-between; align-items: flex-end;
-    border-bottom: 1px solid #1e293b; padding-bottom: 14px; margin-bottom: 14px;
-  }
-  .title { font-size: 25px; font-weight: 800; letter-spacing: 0.5px; color: #ffffff; }
-  .subtitle { font-size: 12.5px; color: #94a3b8; margin-top: 4px; }
-  .badges { display: flex; gap: 8px; }
-  .badge {
-    background: #1e293b; color: #38bdf8; border: 1px solid #38bdf855;
-    padding: 4px 11px; border-radius: 999px; font-size: 12.5px; font-weight: 700;
-  }
-  .badge.deep { background: #451a03; color: #fb923c; border-color: #fb923c66; }
-
-  .summary-bar {
-    background: #132038; border: 1px solid #1e3a5f; border-radius: 12px;
-    padding: 12px 16px; margin-bottom: 14px; font-size: 14px; line-height: 1.55; color: #e2e8f0;
-  }
-  .regime-pill {
-    display: inline-block; background: #0284c7; color: #ffffff;
-    font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 6px; margin-right: 8px;
+  .shell {
+    background: #101726;
+    border: 1px solid #1e293b;
+    border-radius: 20px;
+    padding: 26px 26px 22px;
   }
 
-  .section-title {
-    font-size: 13px; font-weight: 700; color: #94a3b8;
-    letter-spacing: 1px; margin: 16px 0 9px;
+  /* Header */
+  .header-pills {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px;
   }
-  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
-  .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 10px; }
-  .box {
-    background: #151e32; border: 1px solid #1e293b;
-    border-radius: 12px; padding: 11px 12px;
+  .pill-group { display: flex; gap: 8px; align-items: center; }
+  .pill {
+    font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 999px;
+    background: #1a2335; color: #cbd5e1; border: 1px solid #2b384f;
   }
-  .chip-box {
-    background: #141c2f; border: 1px solid #26344d;
-    border-radius: 12px; padding: 12px 13px;
+  .pill.deep {
+    background: #2b1d0e; color: #fbbf24; border-color: #78350f;
   }
-  .box-label { font-size: 12px; color: #94a3b8; margin-bottom: 4px; }
-  .box-val { font-size: 16.5px; font-weight: 700; color: #f8fafc; }
-  .box-chg { font-size: 13.5px; font-weight: 700; margin-top: 2px; }
-  .box-sub { font-size: 11.5px; color: #94a3b8; margin-top: 4px; }
+  .pill.regime {
+    background: #0f2538; color: #38bdf8; border-color: #1e496b;
+  }
+  .main-title {
+    font-size: 27px; font-weight: 800; letter-spacing: 0.4px; color: #ffffff;
+    line-height: 1.25;
+  }
+  .sub-meta {
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 8px; font-size: 13px; color: #94a3b8;
+    padding-bottom: 20px; border-bottom: 1px solid #1e293b;
+  }
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: #10b981; flex-shrink: 0;
+  }
 
-  /* 台股習慣：紅漲綠跌 */
-  .up { color: #f87171; }
+  /* Section Titles */
+  .sec-head {
+    display: flex; justify-content: space-between; align-items: center;
+    margin: 24px 0 12px;
+  }
+  .sec-title {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 17px; font-weight: 800; color: #ffffff; letter-spacing: 0.3px;
+  }
+  .sec-bar {
+    width: 4px; height: 18px; border-radius: 99px; background: #e2e8f0; display: inline-block;
+  }
+  .sec-bar.amber { background: #f59e0b; }
+  .sec-right { font-size: 12px; color: #64748b; }
+
+  /* Grids & Cards */
+  .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+
+  .card {
+    background: #151e30; border: 1px solid #233046;
+    border-radius: 14px; padding: 15px 17px;
+  }
+  .card.extreme-down {
+    background: linear-gradient(145deg, #102422 0%, #151e30 70%);
+    border-color: #10b98188;
+  }
+  .card.extreme-up {
+    background: linear-gradient(145deg, #2b141c 0%, #151e30 70%);
+    border-color: #f43f5e88;
+  }
+  .card.alert-amber {
+    background: linear-gradient(180deg, #1c1814 0%, #161414 100%);
+    border-color: #92400e;
+  }
+
+  /* US 2x2 */
+  .idx-top {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
+  }
+  .idx-name { font-size: 13.5px; color: #94a3b8; font-weight: 600; }
+  .move-tag {
+    font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px;
+  }
+  .move-tag.up { background: #3b1721; color: #fb7185; }
+  .move-tag.down { background: #0e2e26; color: #34d399; }
+  .move-tag.flat { background: #1e293b; color: #94a3b8; }
+
+  .idx-val { font-size: 26px; font-weight: 700; color: #ffffff; letter-spacing: -0.5px; }
+  .idx-chg { font-size: 14px; font-weight: 700; margin-top: 6px; }
+  .idx-pts { font-size: 12.5px; font-weight: 500; opacity: 0.85; margin-left: 4px; }
+
+  /* Colors (紅漲綠跌) */
+  .up { color: #fb7185; }
   .down { color: #34d399; }
   .flat { color: #94a3b8; }
 
-  .barometer {
+  /* Barometer */
+  .baro-card {
     display: flex; justify-content: space-between; align-items: center;
-    background: #151e32; border: 1px solid #1e293b; border-radius: 12px;
-    padding: 10px 16px; margin-top: 10px; font-size: 13.5px;
+    background: #131c2e; border: 1px solid #223047;
+    border-radius: 14px; padding: 12px 16px;
   }
-  .news-item {
-    background: #151e32; border-left: 4px solid #38bdf8;
-    border-radius: 0 12px 12px 0; padding: 11px 14px; margin-bottom: 9px;
+  .baro-left { display: flex; align-items: center; gap: 11px; }
+  .ticker-badge {
+    background: #1e293b; border: 1px solid #334155; color: #e2e8f0;
+    font-size: 11px; font-weight: 800; padding: 6px 8px; border-radius: 8px;
+    min-width: 46px; text-align: center;
   }
-  .news-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 5px; }
-  .news-title { font-size: 14.5px; font-weight: 700; color: #ffffff; }
+  .baro-sub { font-size: 11px; color: #94a3b8; }
+  .baro-name { font-size: 14px; font-weight: 700; color: #f8fafc; margin-top: 2px; }
+  .baro-chg { font-size: 16px; font-weight: 700; }
+
+  /* Macro 3-col */
+  .macro-top {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;
+  }
+  .macro-name { font-size: 12.5px; color: #94a3b8; }
+  .macro-val { font-size: 20px; font-weight: 700; color: #f8fafc; }
+  .macro-sub { font-size: 11.5px; color: #64748b; margin-top: 4px; }
+
+  /* News Cards */
+  .news-card {
+    background: #141d2e; border: 1px solid #233046;
+    border-radius: 14px; padding: 15px 17px; margin-bottom: 10px;
+    display: flex; gap: 14px; align-items: flex-start;
+  }
+  .news-tag {
+    background: #1e293b; border: 1px solid #334155; color: #cbd5e1;
+    font-size: 11.5px; font-weight: 800; padding: 6px 0; border-radius: 8px;
+    width: 48px; text-align: center; flex-shrink: 0; margin-top: 2px;
+    letter-spacing: 0.5px;
+  }
+  .news-body { flex: 1; min-width: 0; }
+  .news-top {
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;
+  }
+  .news-title { font-size: 15.5px; font-weight: 800; color: #ffffff; line-height: 1.4; }
   .news-src {
     font-size: 11px; color: #94a3b8; background: #0f172a;
-    border: 1px solid #334155; padding: 2px 7px; border-radius: 6px; white-space: nowrap;
+    border: 1px solid #2b384f; padding: 2px 8px; border-radius: 6px; white-space: nowrap;
   }
-  .news-text { font-size: 13px; color: #cbd5e1; line-height: 1.55; margin-bottom: 4px; }
-  .news-impact { font-size: 12.5px; color: #7dd3fc; line-height: 1.5; }
+  .news-fact { font-size: 13px; color: #cbd5e1; line-height: 1.55; margin-top: 6px; }
+  .news-impact-row {
+    display: flex; align-items: flex-start; gap: 9px;
+    margin-top: 9px; padding-top: 9px; border-top: 1px dashed #243248;
+  }
+  .impact-pill {
+    background: #33230f; color: #fbbf24; border: 1px solid #78350f;
+    font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 5px;
+    white-space: nowrap; margin-top: 1px;
+  }
+  .impact-text { font-size: 13px; color: #e2e8f0; line-height: 1.5; }
 
-  .radar-box {
-    background: #1c1917; border: 1px solid #78350f; border-radius: 12px;
-    padding: 13px 15px; margin-top: 12px;
+  /* Taiwan Premarket */
+  .tw-top-card {
+    display: flex; justify-content: space-between; align-items: center;
+    background: #131c2e; border: 1px solid #223047;
+    border-radius: 14px; padding: 15px 18px;
   }
-  .radar-title { font-size: 13.5px; font-weight: 700; color: #fbbf24; margin-bottom: 6px; }
-  .radar-text { font-size: 13px; color: #fde68a; line-height: 1.55; }
+  .tw-top-card.extreme-down {
+    background: linear-gradient(135deg, #0d2220 0%, #131c2e 75%);
+    border-color: #10b98166;
+  }
+  .tw-top-card.extreme-up {
+    background: linear-gradient(135deg, #28141c 0%, #131c2e 75%);
+    border-color: #f43f5e66;
+  }
+  .tw-big-val { font-size: 24px; font-weight: 700; color: #ffffff; margin-top: 4px; }
+  .tw-unit { font-size: 13px; color: #94a3b8; font-weight: 500; margin-left: 3px; }
+  .chg-pill {
+    font-size: 13.5px; font-weight: 700; padding: 6px 12px; border-radius: 10px;
+    white-space: nowrap;
+  }
+  .chg-pill.up { background: #3b1721; color: #fb7185; border: 1px solid #f43f5e44; }
+  .chg-pill.down { background: #0e2e26; color: #34d399; border: 1px solid #10b98144; }
+  .chg-pill.flat { background: #1e293b; color: #94a3b8; border: 1px solid #334155; }
+
+  .spot-headline { font-size: 18px; font-weight: 800; margin: 6px 0 10px; line-height: 1.3; }
+  .spot-pills { display: flex; flex-direction: column; gap: 6px; }
+  .spot-pill {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 7px;
+  }
+  .spot-pill.up { background: #361721; color: #fda4af; }
+  .spot-pill.down { background: #0e2b24; color: #6ee7b7; }
+  .spot-pill.flat { background: #1e293b; color: #94a3b8; }
+
+  .oi-head { display: flex; justify-content: space-between; align-items: center; }
+  .alert-badge {
+    font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 6px;
+    background: #3d240c; color: #fbbf24; border: 1px solid #92400e;
+  }
+  .oi-val { font-size: 23px; font-weight: 700; color: #ffffff; margin: 10px 0 12px; }
+  .oi-note { font-size: 12px; color: #fbbf24; line-height: 1.45; }
+  .oi-note.normal { color: #94a3b8; }
+
+  .focus-bar {
+    margin-top: 12px; background: #151e30; border: 1px solid #243248;
+    border-radius: 12px; padding: 12px 16px;
+    display: flex; align-items: flex-start; gap: 12px;
+  }
+  .focus-pill {
+    background: #243248; color: #e2e8f0; font-size: 12px; font-weight: 700;
+    padding: 3px 10px; border-radius: 7px; white-space: nowrap; margin-top: 1px;
+  }
+  .focus-text { font-size: 13.5px; color: #e2e8f0; line-height: 1.55; }
+
+  /* Timeline Calendar */
+  .cal-card {
+    margin-top: 20px; background: #141d2e; border: 1px solid #233046;
+    border-radius: 16px; padding: 18px 20px;
+  }
+  .timeline { margin-top: 14px; position: relative; padding-left: 22px; }
+  .timeline::before {
+    content: ""; position: absolute; left: 5px; top: 8px; bottom: 8px;
+    width: 2px; background: #26344b;
+  }
+  .tl-item { position: relative; margin-bottom: 14px; }
+  .tl-item:last-child { margin-bottom: 0; }
+  .tl-dot {
+    position: absolute; left: -22px; top: 4px;
+    width: 12px; height: 12px; border-radius: 50%;
+    background: #475569; border: 2px solid #141d2e;
+  }
+  .tl-dot.today { background: #f43f5e; box-shadow: 0 0 0 3px #f43f5e33; }
+  .tl-time { font-size: 12.5px; font-weight: 700; color: #94a3b8; }
+  .tl-time.today { color: #fb7185; }
+  .tl-title { font-size: 14px; font-weight: 600; color: #f1f5f9; margin-top: 2px; line-height: 1.45; }
+
+  /* Blindspots */
+  .blind-wrap {
+    margin-top: 16px; background: #171412; border: 1px solid #78350f;
+    border-radius: 16px; padding: 18px 20px;
+  }
+  .blind-card {
+    background: #141824; border: 1px solid #2b2725;
+    border-radius: 12px; padding: 13px 15px; margin-top: 10px;
+  }
+  .blind-head { display: flex; align-items: center; gap: 9px; margin-bottom: 6px; }
+  .blind-num {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: #f59e0b; color: #111827; font-size: 12px; font-weight: 800;
+    display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .blind-title { font-size: 14.5px; font-weight: 800; color: #ffffff; }
+  .blind-detail { font-size: 13px; color: #cbd5e1; line-height: 1.55; padding-left: 29px; }
+
   .footer {
-    margin-top: 14px; text-align: right; font-size: 11px; color: #64748b;
+    margin-top: 18px; text-align: center; font-size: 11.5px; color: #64748b;
   }
 </style>
 </head>
@@ -95,97 +272,203 @@
 <div id="brief-card"></div>
 
 <script>
-  const d = {"title_date": "2026/11/26 (四)", "mode_label": "常態盤前・精簡版", "is_deep": false, "data_basis": "美股 11/25 收盤 ＆ 台股 11/26 盤後／夜盤", "tw_date": "11/26", "regime_tag": "高波動分化盤", "premarket_focus": "昨夜美股道瓊逆轉收紅、費半收跌且VIX升至28.29；今美股休市，關注301關稅與台股籌碼動向。", "us_indices": [{"name": "道瓊工業", "value": "50,182.95", "change": "+0.33%", "pts": "(+164點)", "status": "小漲", "trend": "up", "is_extreme": false, "pct_num": 0.3283771920610628, "date": "11/25"}, {"name": "S&P 500", "value": "7,182.78", "change": "-0.25%", "pts": "", "status": "小跌", "trend": "down", "is_extreme": false, "pct_num": 0.2542678815435381, "date": "11/25"}, {"name": "那斯達克", "value": "23,585.80", "change": "-0.62%", "pts": "", "status": "小跌", "trend": "down", "is_extreme": false, "pct_num": 0.6224791327410149, "date": "11/25"}, {"name": "費城半導體", "value": "8,774.86", "change": "-0.65%", "pts": "(-58點)", "status": "小跌", "trend": "down", "is_extreme": false, "pct_num": 0.6525637737050666, "date": "11/25"}], "barometer": {"tsm": {"name": "台積電 ADR (TSM)", "value": "休市", "change": "前收 11/24", "pts": "", "status": "休市", "trend": "flat", "is_extreme": false, "pct_num": 0.0, "date": "11/24"}, "nvda": {"name": "輝達 (NVDA)", "value": "休市", "change": "前收 11/24", "pts": "", "status": "休市", "trend": "flat", "is_extreme": false, "pct_num": 0.0, "date": "11/24"}}, "macro": [{"name": "10Y 美債殖利率", "value": "4.85%", "change": "-5.6 bps", "pts": "", "status": "走弱", "trend": "down", "is_extreme": false, "pct_num": 1.1419200261210316, "date": "11/25"}, {"name": "美元指數 (DXY)", "value": "103.74", "change": "-0.07%", "pts": "", "status": "小跌", "trend": "down", "is_extreme": false, "pct_num": 0.07128166775731513, "date": "11/25"}, {"name": "VIX 恐慌指數", "value": "28.29", "change": "+7.32%", "pts": "", "status": "大漲", "trend": "up", "is_extreme": true, "pct_num": 7.3217005329577685, "date": "11/25"}], "tw_night": {"value": "休市／待開盤", "unit": "", "badge": "暫無夜盤報價", "trend": "flat", "is_extreme": false}, "tw_index": {"name": "台灣加權指數", "value": "39,132.22", "change": "-2.47%", "pts": "(-990點)", "status": "走弱", "trend": "down", "is_extreme": false, "pct_num": 2.4677836017603187, "date": "11/26"}, "nikkei": {"name": "日經 225", "value": "58,128.00", "change": "-0.88%", "pts": "", "status": "小跌", "trend": "down", "is_extreme": false, "pct_num": 0.8809483764930786, "date": "11/26"}, "tw_spot": {"headline": "合計賣超 814.5 億", "trend": "down", "date": "11/25", "breakdown": [{"label": "外資", "value": "-1236.5億", "trend": "down"}, {"label": "投信", "value": "+550.3億", "trend": "up"}, {"label": "自營商", "value": "-128.3億", "trend": "down"}]}, "tw_oi": {"title": "外資台指期未平倉", "value": "暫無", "unit": "", "badge": "待更新", "is_alert": false, "note": "期交所連線逾時", "raw_net": 0}, "top_news": [{"tag": "MACRO", "source": "鉅亨網、Yahoo股市", "title": "美301關稅對台15%且晶片暫豁免", "fact": "美提出14國301產能過剩關稅，對台15%不疊加、越南最高35%，晶片與iPhone暫列豁免。", "impact": "緩解台積電與輝達關稅衝擊，但越南設廠之消費電子與AirPods供應鏈面臨關稅壓力。"}, {"tag": "SEMI", "source": "經濟日報、鉅亨網", "title": "AI賣壓湧現 美股震盪後道瓊逆轉收紅", "fact": "通膨與AI成本疑慮致費半盤中跌7.3%、輝達跌近9%，尾盤買盤進駐使道瓊收漲0.33%、費半跌0.65%。", "impact": "AI晶片與記憶體波動加劇，輝達收跌近4%、台積電ADR跌近2%，牽動台股半導體與AI權值股。"}, {"tag": "TW", "source": "Yahoo股市、永豐金證券", "title": "國家隊護盤台積電 資金轉向PCB族群", "fact": "外資賣超1236.5億、融資增近200億；國家隊進場720億並進駐台積電527億，投信買超550.3億。", "impact": "內外資大幅對作下，台積電暫熄火，盤面資金轉往台達電、聯電、力積電及南電、華通等PCB族群。"}], "calendar_events": [{"time_label": "今日 (全日)", "title": "美國感恩節｜美股休市一日", "is_today": true}, {"time_label": "今日 全日", "title": "美國銀行假日", "is_today": true}, {"time_label": "11/27 (五) 02:00 收盤", "title": "美國感恩節翌日｜美股提前休市（半日盤）", "is_today": false}], "blindspots": [{"title": "指數收斂下的高恐慌背離", "detail": "道瓊小漲0.33%且10Y殖利率降至4.85%，但費半續跌且VIX大漲7.32%至28.29，顯示市場避險情緒仍處高檔。"}, {"title": "內外資對作與期貨籌碼缺口", "detail": "外資賣超1236.5億與投信買超550.3億分歧，融資增近200億，且外資台指期未平倉暫無數據可判斷避險動向。"}], "ai_fallback": false};
-  const trendIcon = t => t === 'up' ? '▲ ' : (t === 'down' ? '▼ ' : '');
-  const isDeep = d.mode && d.mode.includes('深度');
-  const calText = (d.calendar_list && d.calendar_list.length > 0)
-    ? d.calendar_list.join(' ｜ ')
-    : '未來 7 天暫無已登錄之重大總經事件';
+  const d = {"title_date": "2026/11/26 (四)", "mode_label": "常態盤前・精簡版", "is_deep": false, "data_basis": "美股 11/25 收盤 ＆ 台股 11/26 盤後／夜盤", "tw_date": "11/26", "regime_tag": "美股震盪台股強彈", "premarket_focus": "美股四大指數多數收跌但道瓊逆勢收紅，AI與關稅壓力牽動市場，台股加權指數昨收漲1.80%。", "us_indices": [{"name": "道瓊工業", "value": "50,182.95", "change": "+0.33%", "pts": "(+164點)", "status": "小漲", "trend": "up", "is_extreme": false, "pct_num": 0.3283771920610628, "date": "11/25"}, {"name": "S&P 500", "value": "7,182.78", "change": "-0.25%", "pts": "", "status": "小跌", "trend": "down", "is_extreme": false, "pct_num": 0.2542678815435381, "date": "11/25"}, {"name": "那斯達克", "value": "23,585.80", "change": "-0.62%", "pts": "", "status": "小跌", "trend": "down", "is_extreme": false, "pct_num": 0.6224791327410149, "date": "11/25"}, {"name": "費城半導體", "value": "8,774.86", "change": "-0.65%", "pts": "(-58點)", "status": "小跌", "trend": "down", "is_extreme": false, "pct_num": 0.6525637737050666, "date": "11/25"}], "barometer": {"tsm": {"name": "台積電 ADR (TSM)", "value": "342.34", "change": "-1.96%", "pts": "", "status": "走弱", "trend": "down", "is_extreme": false, "pct_num": 1.964494739213671, "date": "11/25"}, "nvda": {"name": "輝達 (NVDA)", "value": "149.30", "change": "-3.91%", "pts": "", "status": "重挫", "trend": "down", "is_extreme": true, "pct_num": 3.9129885699515974, "date": "11/25"}}, "macro": [{"name": "10Y 美債殖利率", "value": "4.85%", "change": "-5.6 bps", "pts": "", "status": "走弱", "trend": "down", "is_extreme": false, "pct_num": 1.1419200261210316, "date": "11/25"}, {"name": "美元指數 (DXY)", "value": "103.74", "change": "-0.07%", "pts": "", "status": "小跌", "trend": "down", "is_extreme": false, "pct_num": 0.0683933601556423, "date": "11/25"}, {"name": "VIX 恐慌指數", "value": "28.29", "change": "+7.32%", "pts": "", "status": "大漲", "trend": "up", "is_extreme": true, "pct_num": 7.3217005329577685, "date": "11/25"}], "tw_night": {"value": "休市／待開盤", "unit": "", "badge": "暫無夜盤報價", "trend": "flat", "is_extreme": false}, "tw_index": {"name": "台灣加權指數", "value": "38,881.23", "change": "+1.80%", "pts": "(+686點)", "status": "收漲", "trend": "up", "is_extreme": false, "pct_num": 1.795504820500653, "date": "11/26"}, "nikkei": {"name": "日經 225", "value": "57,894.54", "change": "+1.55%", "pts": "", "status": "收漲", "trend": "up", "is_extreme": false, "pct_num": 1.5486631529002277, "date": "11/26"}, "tw_spot": {"headline": "合計賣超 814.5 億", "trend": "down", "date": "11/25", "breakdown": [{"label": "外資", "value": "-1236.5億", "trend": "down"}, {"label": "投信", "value": "+550.3億", "trend": "up"}, {"label": "自營商", "value": "-128.3億", "trend": "down"}]}, "tw_oi": {"title": "外資台指期未平倉", "value": "暫無", "unit": "", "badge": "待更新", "is_alert": false, "note": "期交所連線逾時", "raw_net": 0}, "top_news": [{"tag": "US", "source": "鉅亨網", "title": "美股震盪拉回道瓊逆勢收紅", "fact": "道瓊工業指數小漲0.33%至50,182.95點，S&P 500與那斯達克分別下跌0.25%與0.62%，費城半導體下跌0.65%。", "impact": "影響美國大型科技股與半導體族群走勢，間接牽動台股相關電子權值股表現。"}, {"tag": "AI", "source": "鉅亨網", "title": "輝達重挫AI賣壓與建置成本", "fact": "輝達股價重挫3.91%收在149.30點，市場持續擔憂AI建置成本與相關關稅疑慮。", "impact": "加重全球AI概念股與半導體供應鏈的修正壓力，台積電ADR下跌1.96%面臨調節。"}, {"tag": "TW", "source": "經濟日報", "title": "美國擬對台課徵301關稅", "fact": "美國301調查報告出爐，擬對台灣課徵最高15%產能過剩關稅，行政院已針對細節對外說明。", "impact": "牽動台灣出口導向產業及相關製造業供應鏈的成本結構與國際競爭力。"}], "calendar_events": [{"time_label": "今日 (全日)", "title": "美國感恩節｜美股休市一日", "is_today": true}, {"time_label": "今日 全日", "title": "美國銀行假期", "is_today": true}, {"time_label": "11/27 (02:00 收盤)", "title": "美國感恩節翌日｜美股提前休市（半日盤）", "is_today": false}], "blindspots": [{"title": "恐慌指數與美股分化背離", "detail": "VIX恐慌指數大漲7.32%至28.29，顯示市場避險情緒升溫，與道瓊逆勢收紅形成分化。"}, {"title": "台股現貨與期貨籌碼背離", "detail": "台股現貨昨日合計賣超814.5億元，其中外資賣超1236.5億元，與加權指數大漲1.80%呈現籌碼背離。"}], "ai_fallback": false};
+  const arrow = t => t === 'up' ? '▲ ' : (t === 'down' ? '▼ ' : '');
+  const extremeClass = item => item.is_extreme ? (item.trend === 'up' ? 'extreme-up' : 'extreme-down') : '';
+
+  const calEvents = (d.calendar_events && d.calendar_events.length > 0)
+    ? d.calendar_events
+    : [{ time_label: '未來 7 天', title: '暫無已登錄之重大總經或休市事件', is_today: false }];
+
+  const blindspots = (d.blindspots && d.blindspots.length > 0)
+    ? d.blindspots
+    : [{ title: '市場訊號觀察', detail: '請持續留意美債殖利率與外資期現貨同步性。' }];
+
+  const spotBreakdown = (d.tw_spot && d.tw_spot.breakdown) ? d.tw_spot.breakdown : [];
 
   document.getElementById('brief-card').innerHTML = `
-    <div class="header">
-      <div>
-        <div class="title">台美股盤前財經晨報</div>
-        <div class="subtitle">${d.date_label} ｜ 資料基準：${d.data_basis}</div>
-      </div>
-      <div class="badges">
-        <div class="badge ${isDeep ? 'deep' : ''}">${d.mode}</div>
-      </div>
-    </div>
-
-    <div class="summary-bar">
-      <span class="regime-pill">${d.regime_tag}</span>${d.one_line_summary}
-    </div>
-
-    <div class="section-title">01. 美股與關鍵指標</div>
-    <div class="grid-4">
-      ${d.us_indices.map(i => `
-        <div class="box">
-          <div class="box-label">${i.name}</div>
-          <div class="box-val">${i.value}</div>
-          <div class="box-chg ${i.trend}">${trendIcon(i.trend)}${i.change}</div>
+    <div class="shell">
+      <div class="header-pills">
+        <div class="pill-group">
+          <div class="pill ${d.is_deep ? 'deep' : ''}">${d.mode_label}</div>
+          <div class="pill regime">${d.regime_tag}</div>
         </div>
-      `).join('')}
-    </div>
+        <div class="pill">純公版晨報</div>
+      </div>
 
-    <div class="barometer">
-      <span style="color:#94a3b8;font-weight:700;">開盤氣壓計</span>
-      <span>台積電 ADR <strong class="${d.barometer.tsm.trend}">${trendIcon(d.barometer.tsm.trend)}${d.barometer.tsm.change}</strong></span>
-      <span>輝達 NVDA <strong class="${d.barometer.nvda.trend}">${trendIcon(d.barometer.nvda.trend)}${d.barometer.nvda.change}</strong></span>
-    </div>
+      <div class="main-title">${d.title_date} 台美股盤前財經晨報</div>
+      <div class="sub-meta">
+        <span class="status-dot"></span>
+        <span>資料基準：${d.data_basis}</span>
+      </div>
 
-    <div class="grid-2">
-      ${d.asia.map(a => `
-        <div class="box" style="display:flex;justify-content:space-between;align-items:center;">
-          <div>
-            <div class="box-label">${a.name} (${a.date})</div>
-            <div class="box-val">${a.value}</div>
+      <div class="sec-head">
+        <div class="sec-title"><span class="sec-bar"></span>隔夜美股與總經溫度計</div>
+        <div class="sec-right">紅漲 ▲ ／ 綠跌 ▼</div>
+      </div>
+
+      <div class="grid-2">
+        ${(d.us_indices || []).map(i => `
+          <div class="card ${extremeClass(i)}">
+            <div class="idx-top">
+              <div class="idx-name">${i.name}</div>
+              <div class="move-tag ${i.trend}">${i.status}</div>
+            </div>
+            <div class="idx-val mono">${i.value}</div>
+            <div class="idx-chg mono ${i.trend}">
+              ${arrow(i.trend)}${i.change}${i.pts ? `<span class="idx-pts">${i.pts}</span>` : ''}
+            </div>
           </div>
-          <div class="box-chg ${a.trend}" style="font-size:15px;">${trendIcon(a.trend)}${a.change}</div>
-        </div>
-      `).join('')}
-    </div>
-
-    <div class="grid-3">
-      ${d.macro.map(m => `
-        <div class="box">
-          <div class="box-label">${m.name}</div>
-          <div class="box-val" style="font-size:15px;">${m.value}</div>
-          <div class="box-chg ${m.trend}" style="font-size:12px;">${m.change}</div>
-        </div>
-      `).join('')}
-    </div>
-
-    <div class="section-title">02. 台股盤前籌碼</div>
-    <div class="grid-3" style="margin-top:0;">
-      ${(d.tw_chips || []).map(c => `
-        <div class="chip-box">
-          <div class="box-label">${c.label}</div>
-          <div class="box-val ${c.trend}" style="font-size:16px;">${c.value}</div>
-          <div class="box-sub">${c.sub}</div>
-        </div>
-      `).join('')}
-    </div>
-
-    <div class="section-title">03. 市場主要驅動事件</div>
-    ${d.top_news.map(n => `
-      <div class="news-item">
-        <div class="news-head">
-          <div class="news-title">${n.title}</div>
-          <div class="news-src">${n.source}</div>
-        </div>
-        <div class="news-text"><strong>事實：</strong>${n.fact}</div>
-        <div class="news-impact"><strong>影響：</strong>${n.impact}</div>
+        `).join('')}
       </div>
-    `).join('')}
 
-    <div class="radar-box">
-      <div class="radar-title">04. 未來 7 天行事曆與盲點觀察</div>
-      <div class="radar-text" style="margin-bottom:6px;"><strong>📅 行事曆：</strong>${calText}</div>
-      <div class="radar-text"><strong>⚠️ 盲點：</strong>${d.blindspot}</div>
+      <div class="grid-2" style="margin-top:12px;">
+        <div class="baro-card">
+          <div class="baro-left">
+            <div class="ticker-badge mono">TSM</div>
+            <div>
+              <div class="baro-sub">台股開盤氣壓計</div>
+              <div class="baro-name">台積電 ADR (TSM)</div>
+            </div>
+          </div>
+          <div class="baro-chg mono ${d.barometer.tsm.trend}">${arrow(d.barometer.tsm.trend)}${d.barometer.tsm.change}</div>
+        </div>
+        <div class="baro-card">
+          <div class="baro-left">
+            <div class="ticker-badge mono">NVDA</div>
+            <div>
+              <div class="baro-sub">AI 供應鏈核心</div>
+              <div class="baro-name">輝達 (NVDA)</div>
+            </div>
+          </div>
+          <div class="baro-chg mono ${d.barometer.nvda.trend}">${arrow(d.barometer.nvda.trend)}${d.barometer.nvda.change}</div>
+        </div>
+      </div>
+
+      <div class="grid-3" style="margin-top:12px;">
+        ${(d.macro || []).map(m => `
+          <div class="card" style="padding:13px 15px;">
+            <div class="macro-top">
+              <div class="macro-name">${m.name}</div>
+              <div class="mono ${m.trend}" style="font-size:12px;font-weight:700;">${m.change}</div>
+            </div>
+            <div class="macro-val mono">${m.value}</div>
+            <div class="macro-sub">資料日 ${m.date}</div>
+          </div>
+        `).join('')}
+      </div>
+
+      <div class="sec-head">
+        <div class="sec-title"><span class="sec-bar"></span>全球關鍵 3 大事</div>
+        <div class="sec-right">24 小時多源整合</div>
+      </div>
+
+      ${(d.top_news || []).map((n, idx) => `
+        <div class="news-card">
+          <div class="news-tag mono">${n.tag || ('0' + (idx + 1))}</div>
+          <div class="news-body">
+            <div class="news-top">
+              <div class="news-title">${n.title}</div>
+              <div class="news-src">${n.source}</div>
+            </div>
+            <div class="news-fact">${n.fact}</div>
+            <div class="news-impact-row">
+              <span class="impact-pill">影響板塊</span>
+              <span class="impact-text">${n.impact}</span>
+            </div>
+          </div>
+        </div>
+      `).join('')}
+
+      <div class="sec-head">
+        <div class="sec-title"><span class="sec-bar"></span>台股盤前風向</div>
+        <div class="sec-right">${d.tw_date} 盤後與夜盤</div>
+      </div>
+
+      <div class="grid-2">
+        <div class="tw-top-card ${extremeClass(d.tw_night)}">
+          <div>
+            <div class="idx-name">台指期夜盤</div>
+            <div class="tw-big-val mono">${d.tw_night.value}<span class="tw-unit">${d.tw_night.unit}</span></div>
+          </div>
+          <div class="chg-pill mono ${d.tw_night.trend}">${arrow(d.tw_night.trend)}${d.tw_night.badge}</div>
+        </div>
+        <div class="tw-top-card ${extremeClass(d.tw_index)}">
+          <div>
+            <div class="idx-name">台灣加權指數 (${d.tw_index.date})</div>
+            <div class="tw-big-val mono">${d.tw_index.value}</div>
+          </div>
+          <div class="chg-pill mono ${d.tw_index.trend}">${arrow(d.tw_index.trend)}${d.tw_index.change}</div>
+        </div>
+      </div>
+
+      <div class="grid-3" style="margin-top:12px;">
+        <div class="card">
+          <div class="idx-name">三大法人現貨 (${d.tw_spot.date})</div>
+          <div class="spot-headline ${d.tw_spot.trend}">${d.tw_spot.headline}</div>
+          <div class="spot-pills">
+            ${spotBreakdown.map(b => `
+              <div class="spot-pill ${b.trend}">
+                <span>${b.label}</span>
+                <span class="mono">${arrow(b.trend)}${b.value}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <div class="card ${d.tw_oi.is_alert ? 'alert-amber' : ''}">
+          <div class="oi-head">
+            <div class="idx-name">${d.tw_oi.title}</div>
+            <div class="alert-badge">${d.tw_oi.badge}</div>
+          </div>
+          <div class="oi-val mono">${d.tw_oi.value}<span class="tw-unit">${d.tw_oi.unit}</span></div>
+          <div class="oi-note ${d.tw_oi.is_alert ? '' : 'normal'}">${d.tw_oi.note}</div>
+        </div>
+
+        <div class="card">
+          <div class="oi-head">
+            <div class="idx-name">亞股參考・日經 225</div>
+            <div class="move-tag ${d.nikkei.trend}">${d.nikkei.status}</div>
+          </div>
+          <div class="oi-val mono">${d.nikkei.value}</div>
+          <div class="idx-chg mono ${d.nikkei.trend}" style="margin-top:0;">${arrow(d.nikkei.trend)}${d.nikkei.change}</div>
+          <div class="macro-sub" style="margin-top:6px;">資料日 ${d.nikkei.date}</div>
+        </div>
+      </div>
+
+      <div class="focus-bar">
+        <span class="focus-pill">盤前焦點</span>
+        <div class="focus-text">${d.premarket_focus}</div>
+      </div>
+
+      <div class="cal-card">
+        <div class="sec-title"><span class="sec-bar"></span>關鍵行事曆（台北時間）</div>
+        <div class="timeline">
+          ${calEvents.map(ev => `
+            <div class="tl-item">
+              <div class="tl-dot ${ev.is_today ? 'today' : ''}"></div>
+              <div class="tl-time mono ${ev.is_today ? 'today' : ''}">${ev.time_label}</div>
+              <div class="tl-title">${ev.title}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <div class="blind-wrap">
+        <div class="sec-title" style="color:#fbbf24;"><span class="sec-bar amber"></span>盲點與反面視角</div>
+        ${blindspots.map((b, idx) => `
+          <div class="blind-card">
+            <div class="blind-head">
+              <span class="blind-num mono">${idx + 1}</span>
+              <span class="blind-title">${b.title}</span>
+            </div>
+            <div class="blind-detail">${b.detail}</div>
+          </div>
+        `).join('')}
+      </div>
+
+      <div class="footer">客觀中立財經主編視角 ・ 零幻覺時間基準核對 ・ 不構成個人投資建議</div>
     </div>
-
-    <div class="footer">Daily Market Brief ｜ 客觀數據與快訊整理，非投資買賣建議</div>
   `;
 </script>
 </body>
