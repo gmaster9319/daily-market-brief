@@ -23,14 +23,13 @@ today_md = now_tw.strftime("%m/%d")
 weekday_map = ["一", "二", "三", "四", "五", "六", "日"]
 weekday_str = weekday_map[now_tw.weekday()]
 
-# 加入第 3 順位備援，降低尖峰時段 503 機率
 MODELS = ["gemini-4-hydrogen", "gemini-3.8-flash", "gemini-3.5-flash-lite"]
 HTTP_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
 }
 
 RSS_FEEDS = [
-    ("Google財經", "https://news.google.com/rss/search?q=%E5%8F%B0%E8%82%A1+OR+%E7%BE%8E%E8%82%A1+OR+%E8%B2%BB%E5%8D%8A+OR+%E8%81%AF%E6%BA%96%E6%9C%83&hl=zh-TW&gl=TW&ceid=TW:zh-Hant"),
+    ("Google財經", "https://news.google.com/rss/search?q=%E5%8F%B0%E8%82%A1+OR+%E7%BE%8E%E8%82%A1+OR+%E8%B2%BB%E5%8D%8A+OR+%E8%81%AF%E6%BA%96%E6%9C%83+OR+PCE+OR+CPI&hl=zh-TW&gl=TW&ceid=TW:zh-Hant"),
     ("Google科技", "https://news.google.com/rss/search?q=%E5%8F%B0%E7%A9%8D%E9%9B%BB+OR+%E8%BC%9D%E9%81%94+OR+AI%E4%BC%BA%E6%9C%8D%E5%99%A8+OR+%E9%97%9C%E7%A8%85+OR+%E5%A4%96%E8%B3%87&hl=zh-TW&gl=TW&ceid=TW:zh-Hant"),
     ("Yahoo台股", "https://tw.stock.yahoo.com/rss?category=tw-market"),
     ("Yahoo國際", "https://tw.stock.yahoo.com/rss?category=intl-markets"),
@@ -60,7 +59,7 @@ def classify_move(pct):
     return "平盤"
 
 
-def fetch_quote(symbol, name, is_us=True, is_yield=False, show_pts=False):
+def fetch_quote(symbol, name, is_us=True, is_yield=False, show_pts=False, lock_prev_close_intraday=False):
     expected_us_date = (now_tw - datetime.timedelta(days=1)).date()
     try:
         hist = yf.Ticker(symbol).history(period="7d")
@@ -69,6 +68,11 @@ def fetch_quote(symbol, name, is_us=True, is_yield=False, show_pts=False):
         hist = hist.dropna(subset=["Close"])
         if hist.empty:
             raise ValueError("No valid close prices")
+
+        # 若在台股盤中（09:00-13:35）手動執行，略過尚未收盤的當日 K 棒，避免與昨日籌碼時間錯位
+        if lock_prev_close_intraday and len(hist) >= 2:
+            if hist.index[-1].date() == now_tw.date() and (now_tw.hour < 13 or (now_tw.hour == 13 and now_tw.minute < 35)):
+                hist = hist.iloc[:-1]
 
         last_val = float(hist["Close"].iloc[-1])
         last_date = hist.index[-1].date()
@@ -189,70 +193,74 @@ def fetch_twse_spot():
 
 
 def fetch_taifex_foreign_oi():
-    """期交所外資台指期未平倉淨口數"""
-    try:
-        end_d = now_tw.date()
-        start_d = end_d - datetime.timedelta(days=7)
-        payload = {
-            "queryStartDate": start_d.strftime("%Y/%m/%d"),
-            "queryEndDate": end_d.strftime("%Y/%m/%d"),
-            "commodityId": "TXF",
-        }
-        r = requests.post(
-            "https://www.taifex.com.tw/cht/3/futContractsDateDown",
-            data=payload,
-            headers=HTTP_HEADERS,
-            timeout=15,
-        )
-        r.raise_for_status()
-        text = r.content.decode("cp950", errors="ignore")
-        rows = list(csv.reader(io.StringIO(text)))
-        if len(rows) < 2:
-            raise ValueError("Empty TAIFEX OI CSV")
+    """期交所外資台指期未平倉淨口數（含自動重試與 20 秒逾時）"""
+    end_d = now_tw.date()
+    start_d = end_d - datetime.timedelta(days=7)
+    payload = {
+        "queryStartDate": start_d.strftime("%Y/%m/%d"),
+        "queryEndDate": end_d.strftime("%Y/%m/%d"),
+        "commodityId": "TXF",
+    }
+    for attempt in range(2):
+        try:
+            r = requests.post(
+                "https://www.taifex.com.tw/cht/3/futContractsDateDown",
+                data=payload,
+                headers=HTTP_HEADERS,
+                timeout=20,
+            )
+            r.raise_for_status()
+            text = r.content.decode("cp950", errors="ignore")
+            rows = list(csv.reader(io.StringIO(text)))
+            if len(rows) < 2:
+                raise ValueError("Empty TAIFEX OI CSV")
 
-        header = rows[0]
-        net_idx = next((i for i, h in enumerate(header) if "多空未平倉口數淨額" in h), 13)
-        latest_row = None
-        for row in rows[1:]:
-            if len(row) > net_idx and "臺股期貨" in row[1] and "外資" in row[2]:
-                latest_row = row
+            header = rows[0]
+            net_idx = next((i for i, h in enumerate(header) if "多空未平倉口數淨額" in h), 13)
+            latest_row = None
+            for row in rows[1:]:
+                if len(row) > net_idx and "臺股期貨" in row[1] and "外資" in row[2]:
+                    latest_row = row
 
-        if not latest_row:
-            raise ValueError("Foreign TXF OI row not found")
+            if not latest_row:
+                raise ValueError("Foreign TXF OI row not found")
 
-        net_oi = int(float(latest_row[net_idx].replace(",", "").strip()))
-        date_parts = latest_row[0].split("/")
-        d_fmt = f"{int(date_parts[1]):02d}/{int(date_parts[2]):02d}" if len(date_parts) == 3 else latest_row[0]
-        status = "淨多單" if net_oi > 0 else ("淨空單" if net_oi < 0 else "中性")
-        is_alert = net_oi <= -40000
+            net_oi = int(float(latest_row[net_idx].replace(",", "").strip()))
+            date_parts = latest_row[0].split("/")
+            d_fmt = f"{int(date_parts[1]):02d}/{int(date_parts[2]):02d}" if len(date_parts) == 3 else latest_row[0]
+            status = "淨多單" if net_oi > 0 else ("淨空單" if net_oi < 0 else "中性")
+            is_alert = net_oi <= -40000
 
-        if net_oi <= -100000:
-            note = f"資料日 {d_fmt} ・ 突破十萬口警戒"
-        elif net_oi <= -40000:
-            note = f"資料日 {d_fmt} ・ 逾四萬口高空單警戒"
-        else:
-            note = f"資料日 {d_fmt} ・ 外資期貨{status}"
+            if net_oi <= -100000:
+                note = f"資料日 {d_fmt} ・ 突破十萬口警戒"
+            elif net_oi <= -40000:
+                note = f"資料日 {d_fmt} ・ 逾四萬口高空單警戒"
+            else:
+                note = f"資料日 {d_fmt} ・ 外資期貨{status}"
 
-        return {
-            "title": f"外資台指期{status}",
-            "value": f"{abs(net_oi):,}",
-            "unit": "口",
-            "badge": "警戒" if is_alert else status,
-            "is_alert": is_alert,
-            "note": note,
-            "raw_net": net_oi,
-        }
-    except Exception as e:
-        print(f"[WARN] TAIFEX OI failed: {e}")
-        return {
-            "title": "外資台指期未平倉",
-            "value": "暫無",
-            "unit": "",
-            "badge": "待更新",
-            "is_alert": False,
-            "note": "期交所連線逾時",
-            "raw_net": 0,
-        }
+            return {
+                "title": f"外資台指期{status}",
+                "value": f"{abs(net_oi):,}",
+                "unit": "口",
+                "badge": "警戒" if is_alert else status,
+                "is_alert": is_alert,
+                "note": note,
+                "raw_net": net_oi,
+            }
+        except Exception as e:
+            print(f"[WARN] TAIFEX OI attempt {attempt + 1} failed: {e}")
+            if attempt == 0:
+                time.sleep(3)
+
+    return {
+        "title": "外資台指期未平倉",
+        "value": "暫無",
+        "unit": "",
+        "badge": "待更新",
+        "is_alert": False,
+        "note": "期交所連線逾時",
+        "raw_net": 0,
+    }
 
 
 def fetch_taifex_night():
@@ -328,7 +336,7 @@ def fetch_all_market_data():
             fetch_quote("^VIX", "VIX 恐慌指數", is_us=False),
         ],
         "tw_night": fetch_taifex_night(),
-        "tw_index": fetch_quote("^TWII", "台灣加權指數", is_us=False, show_pts=True),
+        "tw_index": fetch_quote("^TWII", "台灣加權指數", is_us=False, show_pts=True, lock_prev_close_intraday=True),
         "nikkei": fetch_quote("^N225", "日經 225", is_us=False, show_pts=False),
         "tw_spot": fetch_twse_spot(),
         "tw_oi": fetch_taifex_foreign_oi(),
@@ -508,9 +516,9 @@ def build_prompt(market, news, structured_cal, tw_previews):
 1. 嚴禁自行編造或補充任何未出現在資料中的數字、點位、稅率、日期或事件。
 2. 嚴禁使用任何 Emoji 或表情符號。
 3. 語氣純陳述事實，不做買賣建議、不做多空預測，禁用「史詩級」「崩盤」「暴漲暴跌」等煽動字眼。
-4. 全球關鍵 3 大事（top_news）：請將相關多則新聞「整合成 3 個完整主題」，每則配一個 2-5 字英文大寫分類碼（如 US / TW / AI / SEMI / MACRO），清楚交代具體事實與對台美股板塊的傳導影響。
-5. 未來 7 天行事曆（calendar_events）：整合下方自動抓取的總經行事曆，並從【台灣焦點預告新聞】中擷取「未來 7 天內且有明確日期」的台灣重大事件（選舉、央行、重要法說會等），統一翻成繁體中文，按時間順序最多列 4 項；若事件在今天（{today_md}），is_today 設為 true。
-6. 盲點與反面視角（blindspots）：固定產出「2 則」結構化深度觀察（每則含短標題與 1-2 句說明），結合美股分化、殖利率、VIX 與台股法人／期貨籌碼的背離訊號。
+4. 全球關鍵 3 大事（top_news）：請將相關多則新聞「整合成 3 個完整主題」，每則配一個 2-5 字英文大寫分類碼（如 US / TW / AI / SEMI / MACRO）。**嚴禁將「美股四大指數漲跌收盤總結」當成一則新聞**（指數已在上方呈現），3 則事件必須聚焦背後的實質驅動原因（如通膨 PCE/CPI、GDP、關稅政策、央行利率、科技巨頭或產業鏈動態）。
+5. 未來 7 天行事曆（calendar_events）：整合下方自動抓取的總經行事曆，並從【台灣焦點預告新聞】中擷取「未來 7 天內且有明確日期」的台灣重大事件（選舉、央行、重要法說會等），統一翻成繁體中文，按時間順序最多列 4 項。**務必去重：若同一天出現意義重疊的休市或假期（例如「美國感恩節」與「美國銀行假期」），請合併為一筆，勿重複列出**。若事件在今天（{today_md}），is_today 設為 true。
+6. 盲點與反面視角（blindspots）：固定產出「2 則」結構化深度觀察（每則含短標題與 1-2 句說明），結合美股分化、殖利率、VIX 與台股法人／期貨籌碼的背離訊號，並嚴格核對各數據的資料日期，勿混淆不同交易日。
 
 【行情與籌碼數據】
 {json.dumps(market, ensure_ascii=False)}
